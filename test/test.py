@@ -1,9 +1,14 @@
+import os.path, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
+
 from PySiQ import Queue
 
 N_WORKERS = 2
 
 queue_instance = Queue()
 queue_instance.start_worker(N_WORKERS)
+#Uncomment this line to get a verbose queuing
+#queue_instance.enableStdoutLogging()
 
 # ************************************************************************
 # Step 4. Queue task

@@ -1,3 +1,6 @@
+import os.path, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
+
 from PySiQ import Queue
 from time import sleep, time
 from random import random
@@ -6,6 +9,8 @@ N_WORKERS = 2
 
 queue_instance = Queue()
 queue_instance.start_worker(N_WORKERS)
+#Uncomment this line to get a verbose queuing
+#queue_instance.enableStdoutLogging()
 
 # ************************************************************************
 # Step 4. Queue task
@@ -61,5 +66,3 @@ task_2_status = queue_instance.check_status(task_2_id)
 
 log("Task 2 is " + str(task_2_status))
 print "Task 2 returned " + str(queue_instance.get_result(task_2_id))
-
-
