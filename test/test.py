@@ -15,9 +15,9 @@ queue_instance.start_worker(N_WORKERS)
 # Step 4. Queue task
 # ************************************************************************
 
-def foo(n_seconds, message):
+def foo(N, message):
     print message + " started..."
-    sleep(n_seconds)
+    sleep(N)
     print message + " finished"
 
 
@@ -47,15 +47,15 @@ queue_instance.enqueue(
 
 queue_instance.enqueue(
     fn=foo,
-    args=(5, "Task 5"),
+    args=(4, "Task 5"),
     task_id= "Task 5",
 	depend= ["Task 3", "Task 4"]
 )
 
-while 1:
-	print("Task 1 is " + str(queue_instance.check_status("Task 1")))
-	print("Task 2 is " + str(queue_instance.check_status("Task 2")))
-	print("Task 3 is " + str(queue_instance.check_status("Task 3")))
-	print("Task 4 is " + str(queue_instance.check_status("Task 4")))
-	print("Task 5 is " + str(queue_instance.check_status("Task 5")))
-	sleep(3)
+# while 1:
+# 	print("Task 1 is " + str(queue_instance.check_status("Task 1")))
+# 	print("Task 2 is " + str(queue_instance.check_status("Task 2")))
+# 	print("Task 3 is " + str(queue_instance.check_status("Task 3")))
+# 	print("Task 4 is " + str(queue_instance.check_status("Task 4")))
+# 	print("Task 5 is " + str(queue_instance.check_status("Task 5")))
+# 	sleep(3)
