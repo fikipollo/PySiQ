@@ -13,7 +13,7 @@ necessary for web applications where it is not possible to handle a heavy task d
 #TODO: ADD DOCUMENTATION TO SCRIPT
 
 import logging
-from threading import RLock as threading_lock, Thread
+from threading import RLock as threading_lock, Thread, Timer
 from collections import deque
 from enum import Enum
 from time import sleep
@@ -47,6 +47,7 @@ class Queue:
         self.queue= deque([])
         self.tasks = {}
         self.workers = []
+        self.timer = None
 
     def start_worker(self, n_workers=1):
         ids = []
@@ -129,8 +130,11 @@ class Queue:
                         #Reset queue state
                         self.queue.rotate(1)
                         switch_pos = 0
-                        logging.debug("Cannot find runnable tasks, waiting 5 seconds...")
-                        sleep(5)
+                        logging.debug("Cannot find runnable tasks, waiting for next try...")
+                        if self.timer == None:
+                            self.timer = Timer(10.0, self.notify_workers);
+                            self.timer.start()
+                        return None
                     elif len(self.queue) > 1:
                         logging.debug("Reordering tasks...")
                         task_aux = self.queue[len(self.queue) - switch_pos]
@@ -146,6 +150,11 @@ class Queue:
             self.lock.release() #UNLOCK CACHE
 
     def notify_workers(self):
+        logging.debug("Notifying workers")
+        if self.timer != None:
+            logging.debug("Cleaning timer")
+            self.timer.cancel()
+            self.timer = None
         for worker in self.workers:
             worker.notify()
 
@@ -157,6 +166,15 @@ class Queue:
 
     def fetch_task(self, task_id):
         return self.tasks.get(task_id, None)
+
+    def remove_task(self, task_id):
+        try:
+            self.lock.acquire()  # LOCK CACHE
+            if self.tasks.has_key(task_id):
+                self.queue.remove(self.tasks.get(task_id))
+                del self.tasks[task_id]
+        finally:
+            self.lock.release() #UNLOCK CACHE
 
     def get_result(self, task_id, remove=True):
         task = self.tasks.get(task_id, None)
