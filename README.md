@@ -1,7 +1,7 @@
-#Introduction
+# Introduction
 PySiQ (_Python Simple Queue_) is a job queue or task queue implemented for Python applications. The main objective of task queues is to avoid running resource-intensive tasks immediately and wait for them to complete. Instead, tasks are scheduled by adding them to a queue, where they will wait until eventually a _worker_, i.e. a special process running in separate thread, takes them out of the queue and execute the job. This concept is especially necessary for web applications where it is not possible to handle a heavy task during a short HTTP request window.
 
-#Features
+# Features
 PySiQ is entirely implemented in Python and provides the following features:
 - Multi-process execution on tasks, configurable number of workers.
 - The status of the queued tasks can be easily checked at any time.
@@ -21,7 +21,7 @@ The queue contains an internal table that keeps the status for all the tasks in 
 </div>
 
 
-#Example of use
+# Example of use
 The following code fragment exemplifies the usage of the developed module. For this use case an instance of queue is initialized with two workers. A total of five tasks are sent to the queue. All tasks will execute the same function called _foo_ which displays a message indicating that execution has started, then waits _N_ seconds, and displays a message announcing the end of execution. Both the displayed message and the duration of the delay (the _N_ value) are provided as parameters for the _foo_ function. Tasks 1 and 3 will take 10 seconds for execution, while tasks 2 and 4 will take less than 5 seconds. Task 5 takes 4 seconds but it won't start until tasks 3 and 4 are completed.
 
 Figure 2 shows the temporal line for the execution of the tasks, as well as the status for the queue and the workers at different time-points.
