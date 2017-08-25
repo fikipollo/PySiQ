@@ -6,6 +6,8 @@ The main objectives of task queues are to avoid running resource-intensive tasks
 Instead, tasks are scheduled by adding them to a queue, where they will wait until eventually a Worker, i.e. a special
 process running in separate thread, takes them out of the queue and execute the task. This concept is especially
 necessary for web applications where it is not possible to handle a heavy task during a short HTTP request window.
+
+VERSION 0.2 AUGUST 2017
 """
 
 #TODO: TIMEOUT
