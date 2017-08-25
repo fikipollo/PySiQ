@@ -4,15 +4,20 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.par
 from time import sleep
 from PySiQ import Queue
 
+# ************************************************************************
+# Initialize queue
+# ************************************************************************
+
 N_WORKERS = 2
 
 queue_instance = Queue()
 queue_instance.start_worker(N_WORKERS)
-#Uncomment this line to get a verbose queuing
+
+#NOTE: Uncomment this line to enable verbose queuing
 #queue_instance.enableStdoutLogging()
 
 # ************************************************************************
-# Step 4. Queue task
+# Queue tasks
 # ************************************************************************
 
 def foo(N, message):
@@ -52,6 +57,7 @@ queue_instance.enqueue(
 	depend= ["Task 3", "Task 4"]
 )
 
+# Uncomment this code to show the queue status
 # while 1:
 # 	print("Task 1 is " + str(queue_instance.check_status("Task 1")))
 # 	print("Task 2 is " + str(queue_instance.check_status("Task 2")))

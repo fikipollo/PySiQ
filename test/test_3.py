@@ -30,13 +30,13 @@ def foo(n_seconds, message):
 #CLIENT 1 SEND TASK Task 1
 task_1_id = queue_instance.enqueue(
     fn=foo,
-    args=(6, "Task 1"),
+    args=(10, "Task 1"),
 )
 
 #CLIENT 2 SEND TASK Task 2
 task_2_id = queue_instance.enqueue(
     fn=foo,
-    args=(10, "Task 2"),
+    args=(15, "Task 2"),
 )
 
 # WAIT 5 SECONDS
@@ -49,20 +49,22 @@ log("Task 1 is " + str(task_1_status))
 log("Task 2 is " + str(task_2_status))
 
 # WAIT 5 SECONDS
-sleep(5)
+sleep(6)
 
 task_1_status = queue_instance.check_status(task_1_id)
 task_2_status = queue_instance.check_status(task_2_id)
 
 log("Task 1 is " + str(task_1_status))
-print "Task 1 returned " + str(queue_instance.get_result(task_1_id))
-
 log("Task 2 is " + str(task_2_status))
 
 # WAIT 5 SECONDS
-sleep(5)
+sleep(7)
 
+task_1_status = queue_instance.check_status(task_1_id)
 task_2_status = queue_instance.check_status(task_2_id)
 
+log("Task 1 is " + str(task_1_status))
 log("Task 2 is " + str(task_2_status))
-print "Task 2 returned " + str(queue_instance.get_result(task_2_id))
+
+log("Task 1 returned " + str(queue_instance.get_result(task_1_id)))
+log("Task 2 returned " + str(queue_instance.get_result(task_2_id)))

@@ -90,24 +90,24 @@ class Queue:
             self.lock.release() #UNLOCK CACHE
             self.notify_workers()
 
-    def enqueue(self, fn, args, task_id="", timeout=600, depend=None):
+    def enqueue(self, fn, args, task_id="", timeout=600, depend=None, incompatible=None):
         try:
             self.lock.acquire() #LOCK CACHE
-            task = Task(fn, args, depend)
+            task = Task(fn, args, depend, incompatible)
 
             if task_id=="":
                 task_id = self.get_random_id()
                 while self.tasks.has_key(task_id):
                     task_id = self.get_random_id()
             elif self.tasks.has_key(task_id):
-                raise RuntimeError("Task already at the queue (Task id : " + task_id + ")")
+                raise RuntimeError("Task already at the queue (Task id : " + str(task_id) + ")")
 
             task.set_id(task_id)
             task.set_timeout(timeout)
 
             self.tasks[task_id] = task
             self.queue.appendleft(task)
-            logging.debug("New task "  + task_id + " added to queue.")
+            logging.debug("New task "  + str(task_id) + " added to queue.")
             logging.debug("Queue length " + str(len(self.queue)))
 
         finally:
@@ -180,7 +180,7 @@ class Queue:
         task = self.tasks.get(task_id, None)
         if task:
             if remove and (task.status == TaskStatus.FINISHED or task.status == TaskStatus.FAILED):
-                logging.debug("Removing task " + task_id)
+                logging.debug("Removing task " + str(task_id))
                 self.tasks.pop(task_id)
             return task.result
         return TaskStatus.NOT_QUEUED
@@ -227,7 +227,7 @@ class Worker():
 
     def run(self):
         try:
-            logging.debug("Worker " + self.id + " starts working...")
+            logging.debug("Worker " + str(self.id) + " starts working...")
             self.status = WorkerStatus.WORKING
             #Execute the function
             fn = self.task.fn
@@ -236,10 +236,13 @@ class Worker():
             self.task.result= fn(*args)
             self.task.status=TaskStatus.FINISHED
         except Exception as ex:
-            self.task.status = TaskStatus.FAILED
-            self.task.error_message=ex.message
+            if self.task != None:
+                self.task.status = TaskStatus.FAILED
+                self.task.error_message=ex.message
+            else:
+                logging.debug("WORKER " + str(self.id) + " WITHOUT TASK.")
         finally:
-            logging.debug("Worker " + self.id + " stops working...")
+            logging.debug("Worker " + str(self.id) + " stops working...")
             self.status=WorkerStatus.IDLE
             self.task=None
             self.notify()
@@ -252,7 +255,7 @@ class WorkerThread (Thread):
         self.worker.run()
 
 class Task:
-    def __init__(self, fn, args, depend=None):
+    def __init__(self, fn, args, depend=None, incompatible=None):
         self.fn = fn
         self.args = args
         self.id = None
@@ -261,6 +264,7 @@ class Task:
         self.result = None
         self.error_message=None
         self.depend = depend
+        self.incompatible= incompatible
 
     def set_id(self, _id):
         self.id = _id
@@ -269,23 +273,31 @@ class Task:
 
     def is_finished(self):
         return  self.status == TaskStatus.FINISHED
+    def is_started(self):
+        return  self.status == TaskStatus.STARTED
     def is_failed(self):
         return self.status == TaskStatus.FAILED
     def get_status(self):
         return self.status
     def set_depend(self, _depend):
         self.depend = _depend
+    def set_incompatible(self, _incompatible):
+        self.incompatible = _incompatible
 
     def canRun(self, tasks):
-        if self.depend == None:
-            return True
+        if self.depend != None:
+            for dependency in self.depend:
+                task = tasks.get(dependency, None)
+                if task == None:
+                    logging.debug("Cannot run task " + str(self.id) + ". Unable to find task " + str(dependency) + " in queue.")
+                    return False
+                if not task.is_finished():
+                    logging.debug("Cannot run task " + str(self.id) + ". Task " + str(dependency) + " is not finished")
+                    return False
 
-        for dependency in self.depend:
-            task = tasks.get(dependency, None)
-            if task == None:
-                logging.debug("Cannot run task " + self.id + ". Unable to find task " + dependency + " in queue.")
-                return False
-            if not task.is_finished():
-                logging.debug("Cannot run task " + self.id + ". Task " + dependency + " is not finished")
-                return False
+        if self.incompatible != None:
+            for task in tasks.values():
+                if task.is_started() and str(task.fn.__name__) in self.incompatible:
+                        logging.debug("Cannot run task " + str(self.id) + ". Conflicting task " + str(task.fn.__name__) + " is running.")
+                        return False
         return True
