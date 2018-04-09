@@ -15,7 +15,8 @@ from flask import Flask, request, jsonify
 from PySiQ import Queue, TaskStatus, WorkerStatus
 import os
 import json
-import importlib
+from imp import load_source
+from inspect import getmembers, isfunction
 
 class Application(object):
     #******************************************************************************************************************
@@ -27,19 +28,35 @@ class Application(object):
         #*******************************************************************************************
         self.app = Flask(__name__)
         self.settings = read_settings_file()
-        self.load_functions()
+        self.functions = self.load_functions()
 
         self.queue_instance = Queue()
-        print("Queue ID is " + self.queue_instance.id)
+
+        if self.settings.get("DEBUG"):
+            self.queue_instance.enable_stdout_log()
+
         self.queue_instance.start_worker(self.settings.get("N_WORKERS", 4))
 
         @self.app.route(self.settings.get("SERVER_SUBDOMAIN", "") + '/api/enqueue', methods=['OPTIONS', 'POST'])
         def enqueue():
             fn = request.json.get("fn")
-            fn = request.json.get("args")
-            task_id = request.json.get("task_id")
+            args = request.json.get("args")
+            task_id = request.json.get("task_id", None)
+            depend = request.json.get("depend", [])
+            incompatible = request.json.get("incompatible", [])
 
-            return jsonify({'success': True})
+            if fn not in self.functions:
+                return jsonify({'success': False})
+
+            task_id = self.queue_instance.enqueue(
+                fn=self.functions[fn],
+                args=args,
+                task_id=task_id,
+                depend=depend,
+                incompatible=incompatible
+            )
+
+            return jsonify({'success': True, 'task_id' : task_id})
             # return (jsonify(self.content), 200, {'Content-Type': 'application/json; charset=utf-8'})
 
         @self.app.route(self.settings.get("SERVER_SUBDOMAIN", "") + '/api/status/<path:task_id>', methods=['OPTIONS', 'GET'])
@@ -47,17 +64,22 @@ class Application(object):
             return jsonify({'success': True, 'status': self.queue_instance.check_status(task_id).name})
 
     def load_functions(self):
-        print("load_functions")
+        functions = {}
         for functions_source in self.settings.get("FUNCTIONS_DIRS", []):
             path = functions_source.get("path")
             if path.startswith("./") or path.startswith("../"):
                 path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))).rstrip("/") + "/" + path
-            files = functions_source.get("path")
-            # for file in files:
-            #     im
+            path = os.path.abspath(path).rstrip("/") + "/"
+            files = functions_source.get("files")
+            for _file in files:
+                module_name = _file.replace(".py", "")
+                module = load_source(module_name, path + _file)
+                functions_list = [o for o in getmembers(module) if isfunction(o[1])]
+                for _function in functions_list:
+                    functions[_function[0]] = _function[1]
+        return functions
 
     def launch(self):
-        print("launch")
         ##*******************************************************************************************
         ##* LAUNCH APPLICATION
         ##*******************************************************************************************

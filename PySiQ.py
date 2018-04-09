@@ -239,6 +239,10 @@ class Queue:
         # logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
         logging.getLogger().setLevel(logging.DEBUG)
 
+    @DeprecationWarning
+    def enableStdoutLogging(self):
+        self.enable_stdout_log()
+
 class Worker():
     def __init__(self, _id, _queue):
         self.id = _id
