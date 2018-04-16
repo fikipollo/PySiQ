@@ -127,7 +127,7 @@ class Queue:
             self.lock.acquire() #LOCK CACHE
             task = Task(fn, args, depend, incompatible)
 
-            if task_id=="":
+            if task_id=="" or task_id==None:
                 task_id = self.get_random_id()
                 while self.tasks.has_key(task_id):
                     task_id = self.get_random_id()

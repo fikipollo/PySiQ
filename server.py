@@ -12,6 +12,7 @@ VERSION 0.3 APRIL 2018
 
 import logging
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from PySiQ import Queue, TaskStatus, WorkerStatus
 import os
 import json
@@ -37,8 +38,13 @@ class Application(object):
 
         self.queue_instance.start_worker(self.settings.get("N_WORKERS", 4))
 
+        CORS(self.app, resources=r'/api/*')
+
         @self.app.route(self.settings.get("SERVER_SUBDOMAIN", "") + '/api/enqueue', methods=['OPTIONS', 'POST'])
         def enqueue():
+            if request.method == "OPTIONS":
+                return jsonify(True)
+
             fn = request.json.get("fn")
             args = request.json.get("args")
             task_id = request.json.get("task_id", None)
@@ -57,11 +63,21 @@ class Application(object):
             )
 
             return jsonify({'success': True, 'task_id' : task_id})
-            # return (jsonify(self.content), 200, {'Content-Type': 'application/json; charset=utf-8'})
 
         @self.app.route(self.settings.get("SERVER_SUBDOMAIN", "") + '/api/status/<path:task_id>', methods=['OPTIONS', 'GET'])
         def check_status(task_id):
+            if request.method == "OPTIONS":
+                return jsonify(True)
             return jsonify({'success': True, 'status': self.queue_instance.check_status(task_id).name})
+
+        @self.app.route(self.settings.get("SERVER_SUBDOMAIN", "") + '/api/result/<path:task_id>', methods=['OPTIONS', 'GET'])
+        def get_result(task_id):
+            if request.method == "OPTIONS":
+                return jsonify(True)
+            result = self.queue_instance.get_result(task_id)
+            if isinstance(result, TaskStatus):
+                return jsonify({'success': False, 'message': "Task couldn't be found in queue"})
+            return jsonify({'success': True, 'result': result})
 
     def load_functions(self):
         functions = {}
@@ -114,4 +130,3 @@ def read_settings_file():
         settings["FUNCTIONS_DIRS"] = QUEUE_SETTINGS.get('FUNCTIONS_DIRS',[])
 
     return settings
-
