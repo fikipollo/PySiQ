@@ -7,7 +7,7 @@ Instead, tasks are scheduled by adding them to a queue, where they will wait unt
 process running in separate thread, takes them out of the queue and execute the task. This concept is especially
 necessary for web applications where it is not possible to handle a heavy task during a short HTTP request window.
 
-VERSION 0.2 AUGUST 2017
+VERSION 0.3 APRIL 2018
 """
 
 #TODO: TIMEOUT
@@ -18,9 +18,11 @@ import logging
 from threading import RLock as threading_lock, Thread, Timer
 from collections import deque
 from enum import Enum
-from time import sleep
 
 class TaskStatus(Enum):
+    """
+    Defines all the possible status for a task in the queue
+    """
     QUEUED  ='queued'
     FINISHED='finished'
     FAILED  ='failed'
@@ -29,11 +31,17 @@ class TaskStatus(Enum):
     NOT_QUEUED='not queued'
 
 class WorkerStatus(Enum):
+    """
+    Defines all the possible status for a worker in the queue
+    """
     WORKING ='working'
     IDLE    ='idle'
     STOPPED ='stopped'
 
 class Singleton(type):
+    """
+    The Singleton definition of the queue.
+    """
     _instances = {}
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
@@ -41,19 +49,30 @@ class Singleton(type):
         return cls._instances[cls]
 
 class Queue:
+    """
+    Definition for the queue
+    """
     __metaclass__ = Singleton
 
     def __init__(self):
-        logging.info("CREATING NEW INSTANCE FOR Queue...")
+        logging.info("Creating the new instance for queue...")
+        self.id = self.get_random_id()
+        # First we acquire the lock to avoid concurrent access to the queue
         self.lock = threading_lock()
+        # Initialize the queue, task list and the workers
         self.queue= deque([])
         self.tasks = {}
         self.workers = []
         self.timer = None
 
     def start_worker(self, n_workers=1):
+        """
+        This function starts a given number of workers providing them a
+        random identifier.
+        :param n_workers: the total new workers to be created
+        :return: the list of new workers
+        """
         ids = []
-        worker_id=""
         for i in range(0, n_workers):
             worker_id = "w" + self.get_random_id()
             self.workers.append(Worker(worker_id, self))
@@ -61,25 +80,36 @@ class Queue:
         return ids
 
     def stop_worker(self, worker_id=None):
+        """
+        This function stops and kills a worker.
+        If no id is provided, all workers are killed.
+        :param worker_id: the identifier for the worker to kill
+        :return: None
+        """
         try:
+            # First we acquire the lock to avoid concurrent access to the queue
             self.lock.acquire() #LOCK CACHE
             if worker_id == None:
                 for worker in self.workers:
-                    if worker.must_die != True:
-                        worker_id = worker.id
-                        break
-                if worker_id == None:
                     logging.info("All workers will die...")
-
-            for worker in self.workers:
-                if worker.id == worker_id:
                     worker.must_die = True
-                    break
+            else:
+                for worker in self.workers:
+                    if worker.id == worker_id:
+                        worker.must_die = True
+                        break
         finally:
             self.lock.release() #UNLOCK CACHE
+            # Here the workers will die
             self.notify_workers()
 
     def remove_worker(self, worker_id):
+        """
+        This function removes a worker from the list of workers
+        (only if the worker was notified "to die" previously)
+        :param worker_id: the ID for the worker to remove
+        :return:
+        """
         try:
             self.lock.acquire() #LOCK CACHE
             i=0
@@ -97,7 +127,7 @@ class Queue:
             self.lock.acquire() #LOCK CACHE
             task = Task(fn, args, depend, incompatible)
 
-            if task_id=="":
+            if task_id=="" or task_id==None:
                 task_id = self.get_random_id()
                 while self.tasks.has_key(task_id):
                     task_id = self.get_random_id()
@@ -124,7 +154,7 @@ class Queue:
             if len(self.queue) > 0:
                 switch_pos = 1
                 nextTask = self.queue[len(self.queue) - 1]
-                runnable = nextTask.canRun(self.tasks)
+                runnable = nextTask.can_run(self.tasks)
 
                 while not runnable:
                     switch_pos = switch_pos + 1
@@ -143,7 +173,7 @@ class Queue:
                         self.queue[len(self.queue) - switch_pos] = self.queue[len(self.queue) - 1]
                         self.queue[len(self.queue) - 1] = task_aux
                     nextTask = self.queue[len(self.queue) - 1]
-                    runnable = nextTask.canRun(self.tasks)
+                    runnable = nextTask.can_run(self.tasks)
                 logging.debug("Task dequeued.")
                 logging.debug("Queue length " + str(len(self.queue)))
                 return self.queue.pop()
@@ -204,10 +234,14 @@ class Queue:
         taskID = ''.join(random.sample(string.ascii_letters+string.octdigits*5,10))
         return taskID
 
-    def enableStdoutLogging(self):
+    def enable_stdout_log(self):
         # import sys
         # logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
         logging.getLogger().setLevel(logging.DEBUG)
+
+    @DeprecationWarning
+    def enableStdoutLogging(self):
+        self.enable_stdout_log()
 
 class Worker():
     def __init__(self, _id, _queue):
@@ -286,7 +320,7 @@ class Task:
     def set_incompatible(self, _incompatible):
         self.incompatible = _incompatible
 
-    def canRun(self, tasks):
+    def can_run(self, tasks):
         if self.depend != None:
             for dependency in self.depend:
                 task = tasks.get(dependency, None)
