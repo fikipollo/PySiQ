@@ -1,3 +1,17 @@
+# Table of contents
+<!--ts-->
+   * [Table of contents](#table-of-contents)
+   * [Introduction](#introduction)
+   * [Features](#features)
+   * [Example of use 1 (file test/test_1.py)](#example-of-use-1-file-testtest_1py)
+   * [Example of use 2 (file test/test_2.py)](#example-of-use-2-file-testtest_2py)
+   * [Advanced use](#advanced-use)
+   * [Using PySiQ as a self-contained service](#using-pysiq-as-a-self-contained-service)
+
+<!-- Added by: rhernandez, at: 2018-04-18T21:53+02:00 -->
+
+<!--te-->
+
 # Introduction
 PySiQ (_Python Simple Queue_) is a job queue or task queue implemented for Python applications. The main objective of task queues is to avoid running resource-intensive tasks immediately and wait for them to complete. Instead, tasks are scheduled by adding them to a queue, where they will wait until eventually a _worker_, i.e. a special process running in separate thread, takes them out of the queue and execute the job. This concept is especially necessary for web applications where it is not possible to handle a heavy task during a short HTTP request window.
 
@@ -11,6 +25,7 @@ PySiQ is entirely implemented in Python and provides the following features:
 - Lightweight module. The code takes less than 300 lines of code.
 - Easy to use and to install in your application.
 - It does not depend on other libraries or tools.
+- Available as a module imported in your application or as a self-contained service accessible through API calls.
 
 The main component of PySiQ is the *Queue*, a Python object that works as a task dispatcher and worker-pool manager. The Queue is a _singleton_ instance that is listening to the other components in the application (Figure 1-1). When the queue is instantiated, a certain number of *Workers* are created depending on the user's settings. Workers are special threads that extract tasks from the queue and execute them. By default, workers are idle, waiting for new tasks are sent to the queue (Figure 1-2). When a client needs to execute certain time-consuming job, it is encapsulated in a *Task* instance, defining the function or code to be executed and the parameters for its execution (Figure 1-3). Some additional parameters can be specified such as a timeout that will abort the execution of the task if it does not start after a determined amount of time, and a list of dependencies, i.e. the identifiers for the tasks that must be completed before launching the execution of the new task. The task instance is sent to the queue and workers are notified that a new task is waiting for being executed. As soon as a worker is idle, it takes the next task at the queue and starts the execution, provided that all its dependencies already finished (Figure 1-4).
 
@@ -144,3 +159,6 @@ Figure 4 shows a more complex example of using. For this use of case two differe
 <img src="https://cloud.githubusercontent.com/assets/11427394/24916921/df0a7aa4-1edb-11e7-9b0b-c90bcfd3811c.png">
 <p style="text-align:justify;"><b>Figure 4. Using the queue system in a Client-Server environment.</b>From client side, two different users send a request to execute some time-consuming task at server side (1). When a request is received, the server program wraps the job to be executed, and its parameters into an instance of task, and sends the new object to the queue system (2).  When a task is queued, an identifier is returned that uniquely identifies the task in the queue system. Task identifiers are then returned to the corresponding client that can use it later to check the execution status or retrieve the results. Every time that a new task is received, the queue system notifies the workers (3), and those that are idle extract and execute the next tasks in the queue (4). While the task is being executed, clients can check periodically the status of the job by sending a request to the server (5). Possible statuses are "queued", "running", "finished" and "failed". When a worker finishes the execution of a task, the result is kept in the queue system until it is requested, and the worker proceeds to execute the next task in queue (6). If no new tasks are available the worker becomes idle. Finally, when the client detects that the task is done - i.e. it receives a 'finished' status (7), a new request is sent in order to retrieve the results of the execution (8).</p>
 </div>
+
+# Using PySiQ as a self-contained service
+COMING SOON..

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Bootstrap Example</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+</head>
+<script>
+  var queue_server = "http://localhost:8081";
+
+  var app = angular.module("myTasksList", []);
+  app.controller("myCtrl", function($scope) {
+    var tasks = JSON.parse(sessionStorage.tasks || "[]");
+
+    $scope.tasks = [];
+    for (var i in tasks) {
+      $scope.tasks.push(tasks[i]);
+    }
+
+    $scope.checkStatus = function(task) {
+      // Send the GET request to server
+      if (task.status !== "FINISHED" && task.status !== "FAILED") {
+        $.ajax({
+          type: "GET",
+          url: queue_server + "/api/status/" + task.task_id,
+          success: function(response) {
+            if (response.success) {
+              task.status = response.status;
+              if (task.status === "FINISHED" || task.status === "FAILED") {
+                $scope.getResult(task);
+              }
+            } else {
+              task.status = "UNKNOWN";
+            }
+            $scope.$apply();
+          },
+          contentType: 'application/json'
+        });
+      }
+    };
+
+    $scope.getResult = function(task) {
+      // Send the GET request to server
+      $.ajax({
+        type: "GET",
+        url: queue_server + "/api/result/" + task.task_id,
+        success: function(response) {
+          if (response.success) {
+            task.result = response.result;
+          } else {
+            task.status = "UNABLE TO GET THE RESULT.";
+          }
+          sessionStorage.tasks = JSON.stringify($scope.tasks);
+          $scope.$apply();
+        },
+        contentType: 'application/json'
+      });
+    };
+
+    $scope.addNewTask = function(task_name, n_seconds, task_result, depend, incompatible) {
+      // Send the POST request to server
+      $.ajax({
+        type: "POST",
+        url: queue_server + "/api/enqueue",
+        data: JSON.stringify({
+          fn: 'foo',
+          args: [n_seconds, task_result],
+          depend: [],
+          incompatible: []
+        }),
+        success: function(response) {
+          if (response.success) {
+            $scope.tasks.push({
+              task_id: response.task_id,
+              task_name: task_name,
+              depend: depend,
+              incompatible: incompatible,
+              status: "UNKNOWN",
+              result: "-"
+            })
+            $scope.$apply();
+            sessionStorage.tasks = JSON.stringify($scope.tasks);
+            alert("New task was succesfully enqueued!");
+          } else {
+            alert("Oops! Something went wrong when trying to enqueue your new task!");
+          }
+        },
+        contentType: 'application/json'
+      });
+    }
+
+    $scope.clearTasks = function() {
+      $scope.tasks = [];
+      sessionStorage.tasks = JSON.stringify($scope.tasks);
+    }
+    //Launch the intervar
+    setInterval(function() {
+      for (var i in $scope.tasks) {
+        $scope.checkStatus($scope.tasks[i])
+      }
+    }, 2000);
+
+  });
+</script>
+
+<body ng-app="myTasksList" ng-controller="myCtrl">
+  <div class="container">
+    <div class="jumbotron">
+      <h1>PySiQ server example</h1>
+      <p>A Python Simple Queue system for your apps.</p>
+    </div>
+    <div class="panel panel-default">
+      <div class="panel-heading">Add a new task</div>
+      <div class="panel-body">
+        <div>
+          <div class="form-group">
+            <label for="task_name">Task name:</label>
+            <input type="text" class="form-control" id="task_name" ng-model="task_name">
+          </div>
+          <div class="form-group">
+            <label for="n_seconds">Duration (seconds):</label>
+            <input type="number" class="form-control" id="n_seconds" ng-model="n_seconds">
+          </div>
+          <div class="form-group">
+            <label for="task_name">A message to show when task ends:</label>
+            <input type="text" class="form-control" id="task_result" ng-model="task_result">
+          </div>
+          <button class="btn btn-default" ng-click="addNewTask(task_name, n_seconds, task_result, [], [])">Run it!</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel panel-default">
+      <div class="panel-heading">Queue content <a style="margin-top:-5px;"class="btn btn-danger btn-sm pull-right" ng-click="clearTasks()"><span class="glyphicon glyphicon-trash"></span> Clear tasks</a></div>
+      <div class="panel-body">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Task name</th>
+              <th>Task ID</th>
+              <th>Status</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr ng-repeat="task in tasks| orderBy: reverse:true">
+              <td>{{task.task_name}}</td>
+              <td>{{task.task_id}}</td>
+              <td>
+                <span ng-if="['QUEUED'].indexOf(task.status) > -1" class="label label-primary">{{task.status}}</span>
+                <span ng-if="['STARTED'].indexOf(task.status) > -1" class="label label-info">{{task.status}}</span>
+                <span ng-if="['FINISHED'].indexOf(task.status) > -1" class="label label-success">{{task.status}}</span>
+                <span ng-if="['FAILED'].indexOf(task.status) > -1" class="label label-danger">{{task.status}}</span>
+                <span ng-if="['QUEUED', 'STARTED', 'FINISHED', 'FAILED'].indexOf(task.status) === -1" class="label label-default">{{task.status}}</span>
+              </td>
+              <td>{{task.result}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
