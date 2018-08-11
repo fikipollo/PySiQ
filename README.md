@@ -9,7 +9,6 @@
    * [Using PySiQ as a self-contained service](#using-pysiq-as-a-self-contained-service)
 
 <!-- Added by: rhernandez, at: 2018-04-18T21:53+02:00 -->
-
 <!--te-->
 
 # Introduction
