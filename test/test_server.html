@@ -53,7 +53,7 @@
           if (response.success) {
             task.result = response.result;
           } else {
-            task.status = "UNABLE TO GET THE RESULT.";
+            task.result = "UNABLE TO GET THE RESULT.";
           }
           sessionStorage.tasks = JSON.stringify($scope.tasks);
           $scope.$apply();
@@ -81,11 +81,13 @@
               depend: depend,
               incompatible: incompatible,
               status: "UNKNOWN",
-              result: "-"
+              result: "-",
+              elapsed_time: 0
             })
             $scope.$apply();
             sessionStorage.tasks = JSON.stringify($scope.tasks);
             alert("New task was succesfully enqueued!");
+            $scope.initNewTask();
           } else {
             alert("Oops! Something went wrong when trying to enqueue your new task!");
           }
@@ -98,6 +100,29 @@
       $scope.tasks = [];
       sessionStorage.tasks = JSON.stringify($scope.tasks);
     }
+
+    $scope.initNewTask = function() {
+      $scope.task_name = "Task " + ($scope.tasks.length + 1);
+      $scope.n_seconds = Math.floor(Math.random() * 19) + 1;
+      $scope.task_result = "Task " + ($scope.tasks.length + 1) + " is done!";
+    }
+
+
+    $scope.updateElapsedTime = function() {
+      for (var i in $scope.tasks) {
+        if ($scope.tasks[i].status !== "FINISHED" && $scope.tasks[i].status !== "FAILED") {
+          $scope.tasks[i].elapsed_time += 1
+        }
+      }
+    };
+
+    $scope.initNewTask();
+
+    //Launch the intervar
+    setInterval(function() {
+      $scope.updateElapsedTime();
+    }, 1000);
+
     //Launch the intervar
     setInterval(function() {
       for (var i in $scope.tasks) {
@@ -130,12 +155,12 @@
             <label for="task_name">A message to show when task ends:</label>
             <input type="text" class="form-control" id="task_result" ng-model="task_result">
           </div>
-          <button class="btn btn-default" ng-click="addNewTask(task_name, n_seconds, task_result, [], [])">Run it!</button>
+          <button class="btn btn-primary" ng-click="addNewTask(task_name, n_seconds, task_result, [], [])">Run it!</button>
         </div>
       </div>
     </div>
     <div class="panel panel-default">
-      <div class="panel-heading">Queue content <a style="margin-top:-5px;"class="btn btn-danger btn-sm pull-right" ng-click="clearTasks()"><span class="glyphicon glyphicon-trash"></span> Clear tasks</a></div>
+      <div class="panel-heading">Queue content (2 workers) <a style="margin-top:-5px;" class="btn btn-danger btn-sm pull-right" ng-click="clearTasks()"><span class="glyphicon glyphicon-trash"></span> Clear tasks</a></div>
       <div class="panel-body">
         <table class="table">
           <thead>
@@ -143,6 +168,7 @@
               <th>Task name</th>
               <th>Task ID</th>
               <th>Status</th>
+              <th>Elapsed time</th>
               <th>Result</th>
             </tr>
           </thead>
@@ -157,6 +183,7 @@
                 <span ng-if="['FAILED'].indexOf(task.status) > -1" class="label label-danger">{{task.status}}</span>
                 <span ng-if="['QUEUED', 'STARTED', 'FINISHED', 'FAILED'].indexOf(task.status) === -1" class="label label-default">{{task.status}}</span>
               </td>
+              <td>{{task.elapsed_time}}</td>
               <td>{{task.result}}</td>
             </tr>
           </tbody>

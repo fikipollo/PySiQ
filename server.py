@@ -18,6 +18,7 @@ import os
 import json
 from imp import load_source
 from inspect import getmembers, isfunction
+from shutil import copyfile
 
 class Application(object):
     #******************************************************************************************************************
@@ -68,16 +69,27 @@ class Application(object):
         def check_status(task_id):
             if request.method == "OPTIONS":
                 return jsonify(True)
-            return jsonify({'success': True, 'status': self.queue_instance.check_status(task_id).name})
+            try: # Fix issue #2 reported by @jeremydouglass
+                return jsonify({'success': True, 'status': self.queue_instance.check_status(task_id).name}) # This may work depending on the version of python
+            except Exception as e:
+                return jsonify({'success': True, 'status': self.queue_instance.check_status(task_id)})
 
         @self.app.route(self.settings.get("SERVER_SUBDOMAIN", "") + '/api/result/<path:task_id>', methods=['OPTIONS', 'GET'])
         def get_result(task_id):
             if request.method == "OPTIONS":
                 return jsonify(True)
-            result = self.queue_instance.get_result(task_id)
+            remove = (request.args.get('remove', default=0) == 0)
+            result = self.queue_instance.get_result(task_id, remove)
             if isinstance(result, TaskStatus):
                 return jsonify({'success': False, 'message': "Task couldn't be found in queue"})
             return jsonify({'success': True, 'result': result})
+
+        @self.app.route(self.settings.get("SERVER_SUBDOMAIN", "") + '/api/remove/<path:task_id>', methods=['OPTIONS', 'DELETE'])
+        def remove_task(task_id):
+            if request.method == "OPTIONS":
+                return jsonify(True)
+            self.queue_instance.remove_task(task_id)
+            return jsonify({'success': True})
 
     def load_functions(self):
         functions = {}
@@ -114,6 +126,10 @@ class Application(object):
 
 def read_settings_file():
     conf_path = os.path.dirname(os.path.realpath(__file__)) + "/server.cfg"
+    # Copy the default settings
+    if not os.path.isfile(conf_path):
+        copyfile(os.path.dirname(os.path.realpath(__file__)) + "/server.default.cfg", conf_path)
+
     settings = {}
     if os.path.isfile(conf_path):
         config = json.load(open(conf_path))

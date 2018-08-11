@@ -203,8 +203,11 @@ class Queue:
         try:
             self.lock.acquire()  # LOCK CACHE
             if self.tasks.has_key(task_id):
+                logging.debug("Removing task " + str(task_id))
                 self.queue.remove(self.tasks.get(task_id))
                 del self.tasks[task_id]
+            else:
+                logging.debug("Failed removing task " + str(task_id) + ". Not found.")
         finally:
             self.lock.release() #UNLOCK CACHE
 
