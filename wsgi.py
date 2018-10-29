@@ -5,6 +5,7 @@ try:
 except Exception as ex:
     from server.server import Application
 
+application = Application().app
+
 if __name__ == "__main__":
-    application = Application()
-    application.launch()
+    application.run()
