@@ -1,3 +1,4 @@
 .idea/
 *.pyc
 server.cfg
+venv
