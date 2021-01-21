@@ -20,27 +20,30 @@ from imp import load_source
 from inspect import getmembers, isfunction
 from shutil import copyfile
 
+
 class Application(object):
-    #******************************************************************************************************************
-    # CONSTRUCTORS
-    #******************************************************************************************************************
+
     def __init__(self):
-        #*******************************************************************************************
-        #* SERVER DEFINITION
-        #*******************************************************************************************
+        # ----------------------------------------------------------------------------------------
+        # SERVER DEFINITION
+        # ----------------------------------------------------------------------------------------
+        # Create the server that will receive the http requests
         self.app = Flask(__name__)
+        CORS(self.app, resources=r'/api/*')
+        # Read the configurations
         self.settings = read_settings_file()
+        # Read the available functions for the tasks in the queue
         self.functions = self.load_functions()
-
+        # Create the queue
         self.queue_instance = Queue()
-
+        # If DEBUG mode is enabled, enable debug log
         if self.settings.get("DEBUG"):
             self.queue_instance.enable_stdout_log()
-
+        # Start the workers
         self.queue_instance.start_worker(self.settings.get("N_WORKERS", 4))
-
-        CORS(self.app, resources=r'/api/*')
-
+        # ----------------------------------------------------------------------------------------
+        # ROUTES DEFINITION
+        # ----------------------------------------------------------------------------------------
         @self.app.route(self.settings.get("SERVER_SUBDOMAIN", "") + '/api/enqueue', methods=['OPTIONS', 'POST'])
         def enqueue():
             if request.method == "OPTIONS":
@@ -108,21 +111,20 @@ class Application(object):
         return functions
 
     def launch(self):
-        ##*******************************************************************************************
-        ##* LAUNCH APPLICATION
-        ##*******************************************************************************************
+        # Launch the web server
         self.app.run(host=self.settings.get("SERVER_HOST_NAME", "0.0.0.0"),
                      port=self.settings.get("SERVER_PORT_NUMBER", 8081),
                      debug=self.settings.get("DEBUG", False), threaded=True, use_reloader=False)
 
     def log(self, message, type="info"):
-        if self.settings.get("DEBUG", False) == True:
+        if self.settings.get("DEBUG", False):
             if type == "warn":
                 logging.warning(message)
             elif type == "err":
                 logging.error(message)
             else:
                 logging.info(message)
+
 
 def read_settings_file():
     conf_path = os.path.dirname(os.path.realpath(__file__)) + "/server.cfg"

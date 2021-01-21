@@ -1,6 +1,7 @@
 from time import sleep
 
-def foo(N, message):
-    sleep(N)
-    print message
+
+def foo(n, message):
+    sleep(n)
+    print(message)
     return message

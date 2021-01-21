@@ -1,1 +1,12 @@
-v0.4 August 2018 PySiQ, a Python Simple Queue system 
+v0.5 January 2021 PySiQ, a Python Simple Queue system 
+
+
+VERSION LOG
+
+- v0.5 January 2021
+  - Adapted code for Python3
+  - Bug fixing
+
+- v0.4 August 2018
+  - Version for python2, not continued
+

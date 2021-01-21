@@ -7,18 +7,20 @@ from random import random
 
 N_WORKERS = 2
 
+print("Starting new queue with " + str(N_WORKERS) + " workers")
 queue_instance = Queue()
 queue_instance.start_worker(N_WORKERS)
-#Uncomment this line to get a verbose queuing
-#queue_instance.enableStdoutLogging()
+# Uncomment this line to get a verbose queuing
+# queue_instance.enableStdoutLogging()
 
 # ************************************************************************
 # Step 4. Queue task
 # ************************************************************************
 start_time = time()
 
+
 def log(message):
-    print("--- %.2f seconds ---" % (time() - start_time)) + message
+    print("--- %.2f seconds --- " % (time() - start_time) + message)
 
 
 def foo(n_seconds, message):
@@ -27,13 +29,14 @@ def foo(n_seconds, message):
     log(message + " finished.")
     return random()
 
-#CLIENT 1 SEND TASK Task 1
+
+# CLIENT 1 SEND TASK Task 1
 task_1_id = queue_instance.enqueue(
     fn=foo,
     args=(10, "Task 1"),
 )
 
-#CLIENT 2 SEND TASK Task 2
+# CLIENT 2 SEND TASK Task 2
 task_2_id = queue_instance.enqueue(
     fn=foo,
     args=(15, "Task 2"),
