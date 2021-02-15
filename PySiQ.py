@@ -65,7 +65,9 @@ class Queue:
     """
     __metaclass__ = Singleton
 
-    def __init__(self):
+    def __init__(self, debug=False):
+        if debug:
+            self.enable_stdout_log()
         logger.info("Creating the new instance of queue...")
         self.id = self.get_random_id("queue_")
         logger.debug("ID for new queue instance is " + self.id)
@@ -89,6 +91,7 @@ class Queue:
             # Get the worker ID
             # TODO: check if unique
             worker_id = self.get_random_id(prefix="w")
+            logger.debug("Creating new worker " + worker_id)
             # Add the worker to the list of available workers
             self.workers.append(Worker(worker_id, self))
             ids.append(worker_id)
