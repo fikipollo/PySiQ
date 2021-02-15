@@ -1,0 +1,20 @@
+version: '2'
+services:
+
+    pysiq-server:
+      image: fikipollo/pysiq:latest
+      container_name: pysiq-server
+      restart: always
+      environment:
+        - N_WORKERS=3
+        - DEBUG=true
+      volumes_from:
+        - pysiq-data
+      ports:
+        - "8081:4444"
+
+    pysiq-data:
+      image: busybox
+      container_name: pysiq-data
+      volumes:
+        - /data/pysiq-data/shared:/shared

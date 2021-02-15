@@ -1,0 +1,85 @@
+############################################################
+############################################################
+# Launcher for iGenomix CGT viewer container
+# This is a template, the following values must be replaced:
+#   - $${INSTANCE_NAME}, name for the instance
+#   - $${INSTANCE_PORT_1}, port number for Galaksio instance
+#   - $${MYSQL_ROOT_PASSWORD}, password for the mysql server
+############################################################
+
+version: '2'
+services:
+
+    $${INSTANCE_NAME}-webserver:
+      image: igenomix/cgtviewer:latest
+      container_name: $${INSTANCE_NAME}-webserver
+      restart: always
+      environment:
+        - MYSQL_ROOT_PASSWORD=$${MYSQL_ROOT_PASSWORD}
+        ##OPTIONAL PARAMS (DEFAULT VALUES IF REMOVED)
+        #- TOTAL_WORKERS=2
+        #- MAX_PARALLEL_THREADS=6
+        #- MYSQL_ROOT_USER=$${MYSQL_ROOT_USER}
+        #- MYSQL_DATABASE_NAME=$${MYSQL_DATABASE_NAME}
+        #- MYSQL_HOST=$${MYSQL_HOST}
+        #- ALLOWED_HOSTS=$${ALLOWED_HOSTS}
+        #- MONGO_SERVER=$${MONGO_SERVER}
+        #- MONGO_PORT=$${MONGO_PORT}
+        #- CACHE_DIR=$${CACHE_DIR}
+        #- MAX_CACHE_SIZE=$${MAX_CACHE_SIZE}
+        #- MAX_CACHE_LIVE=$${MAX_CACHE_LIVE}
+        #- SMTP_EMAIL=senderemail@test.com
+        #- SMTP_PASSWORD=superpassword
+        #- SMTP_RECIPIENTS=oneaccount@test.com,otheraccount@test.com
+        #- SMTP_SERVER=email.smtp.com
+        #- SMTP_PORT=587
+      links:
+        - $${INSTANCE_NAME}-mysql:mysql_server
+        - $${INSTANCE_NAME}-mongo:mongo_server
+        - $${INSTANCE_NAME}-redis:redis_server
+      depends_on:
+        - $${INSTANCE_NAME}-mysql
+        - $${INSTANCE_NAME}-mongo
+        - $${INSTANCE_NAME}-redis
+      volumes_from:
+        - $${INSTANCE_NAME}-data
+      ports:
+        - "$${INSTANCE_PORT_1}:80"
+
+    $${INSTANCE_NAME}-mysql:
+      image: mysql:5.7
+      container_name: $${INSTANCE_NAME}-mysql
+      restart: always
+      environment:
+        - MYSQL_ROOT_PASSWORD=$${MYSQL_ROOT_PASSWORD}
+      depends_on:
+        - $${INSTANCE_NAME}-data
+      volumes_from:
+        - $${INSTANCE_NAME}-data
+
+    $${INSTANCE_NAME}-mongo:
+      image: mongo
+      container_name: $${INSTANCE_NAME}-mongo
+      restart: always
+      depends_on:
+        - $${INSTANCE_NAME}-data
+      volumes_from:
+        - $${INSTANCE_NAME}-data
+
+    $${INSTANCE_NAME}-redis:
+      image: redis
+      container_name: $${INSTANCE_NAME}-redis
+      restart: always
+      depends_on:
+        - $${INSTANCE_NAME}-data
+
+    $${INSTANCE_NAME}-data:
+      image: busybox
+      container_name: $${INSTANCE_NAME}-data
+      volumes:
+        - /data/$${INSTANCE_NAME}-data/mysql:/var/lib/mysql
+        - /data/$${INSTANCE_NAME}-data/mongo:/data/db
+        - /data/$${INSTANCE_NAME}-data/data:/data/cgtviewer-data
+        - /data/$${INSTANCE_NAME}-data/shared:/shared
+        - /data/$${INSTANCE_NAME}-data/navision:/data/navision
+        - /data/$${INSTANCE_NAME}-data/logs/cgtviewer:/var/log/cgtviewer

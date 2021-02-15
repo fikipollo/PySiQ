@@ -15,10 +15,12 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PySiQ import Queue, TaskStatus, WorkerStatus
 import os
-import json
 from imp import load_source
 from inspect import getmembers, isfunction
-from shutil import copyfile
+
+# Get an instance of a logger
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class Application(object):
@@ -31,14 +33,14 @@ class Application(object):
         self.app = Flask(__name__)
         CORS(self.app, resources=r'/api/*')
         # Read the configurations
-        self.settings = read_settings_file()
+        self.settings = self.read_settings_file()
+        # Enable debug mode at log level
+        if self.settings.get("DEBUG"):
+            self.enable_stdout_log()
         # Read the available functions for the tasks in the queue
         self.functions = self.load_functions()
         # Create the queue
-        self.queue_instance = Queue()
-        # If DEBUG mode is enabled, enable debug log
-        if self.settings.get("DEBUG"):
-            self.queue_instance.enable_stdout_log()
+        self.queue_instance = Queue(debug=self.settings.get("DEBUG"))
         # Start the workers
         self.queue_instance.start_worker(self.settings.get("N_WORKERS", 4))
         # ----------------------------------------------------------------------------------------
@@ -56,7 +58,8 @@ class Application(object):
             incompatible = request.json.get("incompatible", [])
 
             if fn not in self.functions:
-                return jsonify({'success': False})
+                logger.error("Function " + fn + " not found.")
+                return jsonify({'success': False, "error_code": "Function " + fn + " not found."})
 
             task_id = self.queue_instance.enqueue(
                 fn=self.functions[fn],
@@ -96,15 +99,15 @@ class Application(object):
 
     def load_functions(self):
         functions = {}
-        for functions_source in self.settings.get("FUNCTIONS_DIRS", []):
-            path = functions_source.get("path")
-            if path.startswith("./") or path.startswith("../"):
-                path = os.path.abspath(os.path.dirname(os.path.realpath(__file__))).rstrip("/") + "/" + path
-            path = os.path.abspath(path).rstrip("/") + "/"
-            files = functions_source.get("files")
+        for functions_path in self.settings.get("FUNCTIONS_DIRS", []):
+            if functions_path.startswith("./") or functions_path.startswith("../"):
+                functions_path = os.path.join(os.path.abspath(os.path.dirname(os.path.realpath(__file__))), functions_path)
+            functions_path = os.path.abspath(functions_path)
+            files = (f for f in os.listdir(functions_path) if f.endswith('.py'))
             for _file in files:
+                logger.debug("Loading functions from " + os.path.join(functions_path, _file))
                 module_name = _file.replace(".py", "")
-                module = load_source(module_name, path + _file)
+                module = load_source(module_name, os.path.join(functions_path, _file))
                 functions_list = [o for o in getmembers(module) if isfunction(o[1])]
                 for _function in functions_list:
                     functions[_function[0]] = _function[1]
@@ -116,35 +119,20 @@ class Application(object):
                      port=self.settings.get("SERVER_PORT_NUMBER", 8081),
                      debug=self.settings.get("DEBUG", False), threaded=True, use_reloader=False)
 
-    def log(self, message, type="info"):
-        if self.settings.get("DEBUG", False):
-            if type == "warn":
-                logging.warning(message)
-            elif type == "err":
-                logging.error(message)
-            else:
-                logging.info(message)
+    @staticmethod
+    def enable_stdout_log():
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug mode is enabled")
 
-
-def read_settings_file():
-    conf_path = os.path.dirname(os.path.realpath(__file__)) + "/server.cfg"
-    # Copy the default settings
-    if not os.path.isfile(conf_path):
-        copyfile(os.path.dirname(os.path.realpath(__file__)) + "/server.default.cfg", conf_path)
-
-    settings = {}
-    if os.path.isfile(conf_path):
-        config = json.load(open(conf_path))
-
-        SERVER_SETTINGS = config.get("SERVER_SETTINGS", {})
+    @staticmethod
+    def read_settings_file():
+        from conf.settings import SERVER_SETTINGS, QUEUE_SETTINGS
+        settings = dict()
         settings["SERVER_HOST_NAME "] = SERVER_SETTINGS.get('SERVER_HOST_NAME', "0.0.0.0")
         settings["SERVER_SUBDOMAIN"] = SERVER_SETTINGS.get('SERVER_SUBDOMAIN', "")
         settings["SERVER_PORT_NUMBER"] = SERVER_SETTINGS.get('SERVER_PORT_NUMBER', 8081)
         settings["DEBUG"] = SERVER_SETTINGS.get('DEBUG', False)
         settings["TMP_DIRECTORY"] = SERVER_SETTINGS.get('TMP_DIRECTORY', "/tmp")
-
-        QUEUE_SETTINGS = config.get("QUEUE_SETTINGS", {})
         settings["N_WORKERS"] = QUEUE_SETTINGS.get('N_WORKERS', 2)
-        settings["FUNCTIONS_DIRS"] = QUEUE_SETTINGS.get('FUNCTIONS_DIRS',[])
-
-    return settings
+        settings["FUNCTIONS_DIRS"] = QUEUE_SETTINGS.get('FUNCTIONS_DIRS', [])
+        return settings
